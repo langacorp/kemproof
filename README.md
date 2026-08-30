@@ -77,7 +77,7 @@ python3 client/attest.py https://example.org/kem/v1 my-subject /path/to/liboqs.s
 
 ## Where this comes from
 
-LANGA runs 16 digital services across 5 networks on its own infrastructure.
+LANGA runs an ecosystem of digital services on its own infrastructure.
 ML-KEM-768 key exchange runs across them, and this is the part that records it.
 
 Writing the honest version of the claim was the harder half: our own public
