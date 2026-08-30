@@ -1,0 +1,38 @@
+name: self-test
+
+# Checks that both sides parse and that the constants match FIPS 203.
+# There is no liboqs on the runner, so this does not perform a real exchange:
+# it verifies what can be verified without one, and says so.
+#
+# NO SECRETS. Reads nothing but the repository itself.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: PHP syntax
+        run: php -l src/KemAttestation.php
+
+      - name: Python syntax
+        run: python -m compileall -q client/attest.py
+
+      - name: ML-KEM-768 sizes match FIPS 203
+        run: php tests/sizes.php
