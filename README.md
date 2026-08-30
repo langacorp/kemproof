@@ -1,5 +1,7 @@
 # kemproof
 
+[![self-test](https://github.com/langacorp/kemproof/actions/workflows/selftest.yml/badge.svg)](https://github.com/langacorp/kemproof/actions/workflows/selftest.yml)
+
 Attest that an **ML-KEM-768** key exchange really happened — and record it in a
 way anyone can check later.
 
