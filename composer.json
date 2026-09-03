@@ -1,0 +1,12 @@
+{
+    "name": "langacorp/kemproof",
+    "description": "Attest that an ML-KEM-768 key exchange really happened. Produces a signed record of the exchange - it does not protect a channel.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["ml-kem", "kyber", "post-quantum", "attestation", "fips-203"],
+    "homepage": "https://github.com/langacorp/kemproof",
+    "authors": [{"name": "LANGA Corp. Srl", "homepage": "https://langa.tv"}],
+    "require": {"php": ">=8.1", "ext-ffi": "*"},
+    "autoload": {"psr-4": {"KemProof\\": "src/"}},
+    "suggest": {"liboqs": "Runtime dependency: the system library that performs the ML-KEM-768 operations"}
+}
