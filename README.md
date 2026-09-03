@@ -75,6 +75,26 @@ Storage is yours. Implement `StoreInterface` over a table, a file, a cache.
 python3 client/attest.py https://example.org/kem/v1 my-subject /path/to/liboqs.so
 ```
 
+## The other tools
+
+Each came out of a defect measured on our own estate. Each one is standalone
+and depends on none of the others.
+
+- **[realroute](https://github.com/langacorp/realroute)** — checks that a route
+  really exists, by content and not by status code.
+- **[leakform](https://github.com/langacorp/leakform)** — finds secrets in a git
+  repository by shape, across every ref.
+- **[samecheck](https://github.com/langacorp/samecheck)** — measures whether the
+  copies that should be identical still are, and never says which one is right.
+- **[provenreal](https://github.com/langacorp/provenreal)** — compares what a
+  system claims with what can be measured, from independent sources.
+- **[countdrift](https://github.com/langacorp/countdrift)** — finds numbers
+  written by hand that no longer match their source.
+
+The set is kept on the [organisation profile](https://github.com/langacorp).
+It is not written here as a count, because a number typed by hand is the thing
+countdrift exists to find.
+
 ## Where this comes from
 
 LANGA runs an ecosystem of digital services on its own infrastructure, and this
