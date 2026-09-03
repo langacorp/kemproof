@@ -77,8 +77,18 @@ python3 client/attest.py https://example.org/kem/v1 my-subject /path/to/liboqs.s
 
 ## Where this comes from
 
-LANGA runs an ecosystem of digital services on its own infrastructure.
-ML-KEM-768 key exchange runs across them, and this is the part that records it.
+LANGA runs an ecosystem of digital services on its own infrastructure, and this
+is the part that records ML-KEM-768 exchanges within it.
+
+Two layers are involved and they are not the same. Connections to the sites
+served on our Galaxy infrastructure negotiate ML-KEM-768 at the **TLS layer**:
+65 hosts out of 65, measured on 3 September 2026 by reading the negotiated group
+in the ServerHello, querying the server address rather than the public name. Not
+yet enabled on LINK, our client-hosting infrastructure, at that layer. This tool
+records something else — an **application-level** exchange, run on top of
+whatever transport is already in place. Anyone checking with `openssl` is
+measuring the first and never the second, which is why each claim here says
+which layer it means.
 
 Writing the honest version of the claim was the harder half: our own public
 pages said *encryption* where the code did *key exchange*, and the two are not
