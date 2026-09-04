@@ -19,11 +19,17 @@ permissions:
 jobs:
   selftest:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 8.0 is the floor declared in composer.json. Declaring a floor
+        # nobody runs is how a constraint drifts from the code.
+        php: ["8.0", "8.2", "8.4"]
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: ${{ matrix.php }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

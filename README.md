@@ -2,6 +2,7 @@
 
 [![self-test](https://github.com/langacorp/kemproof/actions/workflows/selftest.yml/badge.svg)](https://github.com/langacorp/kemproof/actions/workflows/selftest.yml)
 [![packagist](https://img.shields.io/packagist/v/langacorp/kemproof)](https://packagist.org/packages/langacorp/kemproof)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22296522-blue)](https://doi.org/10.5281/zenodo.22296522)
 
 Attest that an **ML-KEM-768** key exchange really happened — and record it in a
 way anyone can check later.
@@ -53,7 +54,8 @@ Three steps, and the secret survives none of them.
 
 - `liboqs` — the crypto is [Open Quantum Safe](https://openquantumsafe.org),
   not ours. This project is the record around it.
-- PHP 8.0+ with the `ffi` extension, for the verifier
+- PHP 8.0+ with the `ffi` extension, for the verifier — the same floor
+  `composer.json` declares, and the self-test runs on it
 - Python 3.8+ for the reference client
 
 ## Install

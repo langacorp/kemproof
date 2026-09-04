@@ -10,6 +10,11 @@ Dates are the date of the commit, not of a release.
   `composer require langacorp/kemproof` existed.
 - README: says what Composer installs and what it does not — `liboqs` is a
   system library and has to be there already.
+- composer.json required PHP 8.1 while the README promised 8.0, nine lines
+  from the install command. Measured, not chosen: the code parses on 8.0 and a
+  real ML-KEM-768 exchange completes on it. The floor is 8.0, and the self-test
+  now runs on 8.0, 8.2 and 8.4 so the declared floor is an exercised one.
+- README: DOI badge. The concept DOI, which follows every future release.
 
 ## 2026-08-30
 
