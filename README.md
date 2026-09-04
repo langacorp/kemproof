@@ -1,6 +1,7 @@
 # kemproof
 
 [![self-test](https://github.com/langacorp/kemproof/actions/workflows/selftest.yml/badge.svg)](https://github.com/langacorp/kemproof/actions/workflows/selftest.yml)
+[![packagist](https://img.shields.io/packagist/v/langacorp/kemproof)](https://packagist.org/packages/langacorp/kemproof)
 
 Attest that an **ML-KEM-768** key exchange really happened — and record it in a
 way anyone can check later.
@@ -54,6 +55,15 @@ Three steps, and the secret survives none of them.
   not ours. This project is the record around it.
 - PHP 8.0+ with the `ffi` extension, for the verifier
 - Python 3.8+ for the reference client
+
+## Install
+
+```bash
+composer require langacorp/kemproof
+```
+
+The package is the PHP verifier under `src/`. `liboqs` is a system library and
+is not installed by Composer: it has to be present on the machine already.
 
 ## Use
 
