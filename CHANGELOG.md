@@ -15,6 +15,12 @@ Dates are the date of the commit, not of a release.
   real ML-KEM-768 exchange completes on it. The floor is 8.0, and the self-test
   now runs on 8.0, 8.2 and 8.4 so the declared floor is an exercised one.
 - README: DOI badge. The concept DOI, which follows every future release.
+- README: PHP 8.0 is a floor, not a recommendation. It no longer receives
+  security fixes upstream. The code runs on it; that is a different sentence
+  from run it, and a reader takes the second one if you do not write the first.
+- CITATION.cff said version 1.0.0 two releases after 1.0.0, and Zenodo reads
+  that file: the archived record takes its abstract from it word for word.
+  Version and date now match the release, and the concept DOI is in it.
 
 ## 2026-08-30
 

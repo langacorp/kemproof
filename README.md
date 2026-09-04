@@ -55,7 +55,9 @@ Three steps, and the secret survives none of them.
 - `liboqs` — the crypto is [Open Quantum Safe](https://openquantumsafe.org),
   not ours. This project is the record around it.
 - PHP 8.0+ with the `ffi` extension, for the verifier — the same floor
-  `composer.json` declares, and the self-test runs on it
+  `composer.json` declares, and the self-test runs on it. **8.0 is a floor, not
+  a recommendation**: it no longer receives security fixes upstream. The code
+  runs on it. Run something newer.
 - Python 3.8+ for the reference client
 
 ## Install
