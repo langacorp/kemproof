@@ -95,6 +95,11 @@ C;
         if (\strlen($ciphertext) !== self::CT_LEN) {
             throw new RuntimeException('ciphertext must be ' . self::CT_LEN . ' bytes');
         }
+        // decapsulate() copies exactly SK_LEN bytes: a longer key would be cut
+        // without a word, a shorter one would fail inside FFI.
+        if (\strlen($secretKey) !== self::SK_LEN) {
+            throw new RuntimeException('secret key must be ' . self::SK_LEN . ' bytes');
+        }
         $shared = $this->decapsulate($secretKey, $ciphertext);
         $record = [
             'subject'     => $subject,
