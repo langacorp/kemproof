@@ -6,6 +6,10 @@ namespace KemProof;
 use FFI;
 use RuntimeException;
 
+// Composer finds StoreInterface through PSR-4 on its own. This line keeps a
+// plain require of this file working, as it did before the interface moved.
+require_once __DIR__ . '/StoreInterface.php';
+
 /**
  * kemproof — attest that an ML-KEM-768 key exchange really happened.
  *
@@ -140,13 +144,4 @@ C;
         $record['valid'] = $record['expires_at'] > \time();
         return $record;
     }
-}
-
-/** Where attestations live. Bring your own: a table, a file, a cache. */
-interface StoreInterface
-{
-    public function put(string $subject, array $record): void;
-
-    /** @return array<string,mixed>|null null when the subject was never attested */
-    public function get(string $subject): ?array;
 }
