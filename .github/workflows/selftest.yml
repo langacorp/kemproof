@@ -1,10 +1,11 @@
 name: self-test
 
-# Checks that both sides parse and that the constants match FIPS 203.
-# There is no liboqs on the runner, so this does not perform a real exchange:
-# it verifies what can be verified without one, and says so.
+# Checks that both sides parse, that the constants match FIPS 203, and that a
+# real ML-KEM-768 exchange completes. liboqs is not on the runner: it is built
+# here from a pinned release tag, so the exchange is run against a known
+# version and not against whatever a package manager has that day.
 #
-# NO SECRETS. Reads nothing but the repository itself.
+# NO SECRETS. Reads nothing but the repository itself and the liboqs tag.
 
 on:
   push:
@@ -16,6 +17,9 @@ on:
 permissions:
   contents: read
 
+env:
+  LIBOQS_TAG: "0.16.0"
+
 jobs:
   selftest:
     runs-on: ubuntu-latest
@@ -26,19 +30,62 @@ jobs:
         # nobody runs is how a constraint drifts from the code.
         php: ["8.0", "8.2", "8.4"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-      - uses: actions/setup-python@v5
+          extensions: ffi
+          tools: composer
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: PHP syntax
-        run: php -l src/KemAttestation.php
+        run: for f in src/*.php tests/*.php; do php -l "$f" || exit 1; done
 
       - name: Python syntax
         run: python -m compileall -q client/attest.py
 
+      - name: composer.json is valid
+        run: composer validate --strict
+
       - name: ML-KEM-768 sizes match FIPS 203
         run: php tests/sizes.php
+
+      - name: Every public name resolves through PSR-4
+        run: php tests/autoload.php
+
+      - name: Wrong input lengths are refused
+        run: php tests/lengths.php
+
+      - name: Build liboqs ${{ env.LIBOQS_TAG }} (ML-KEM-768 only)
+        run: |
+          sudo apt-get install -y --no-install-recommends ninja-build
+          git clone --depth 1 --branch "$LIBOQS_TAG" https://github.com/open-quantum-safe/liboqs.git "$RUNNER_TEMP/liboqs"
+          cmake -S "$RUNNER_TEMP/liboqs" -B "$RUNNER_TEMP/liboqs/build" -GNinja \
+            -DBUILD_SHARED_LIBS=ON -DOQS_BUILD_ONLY_LIB=ON \
+            -DOQS_MINIMAL_BUILD=KEM_ml_kem_768 -DOQS_USE_OPENSSL=OFF
+          ninja -C "$RUNNER_TEMP/liboqs/build"
+          echo "KEMPROOF_LIBOQS=$RUNNER_TEMP/liboqs/build/lib/liboqs.so" >> "$GITHUB_ENV"
+
+      - name: Real ML-KEM-768 exchange, PHP verifier
+        run: php tests/exchange.php
+
+      - name: Client unit tests, with the real exchange
+        run: python -m unittest discover -s tests -v
+
+  client:
+    # The README declares Python 3.8+ for the client. ubuntu-22.04 still has a
+    # 3.8 build for setup-python; these tests need no liboqs.
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.8", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Client unit tests
+        run: python -m unittest discover -s tests -v
