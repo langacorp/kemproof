@@ -10,6 +10,7 @@ import base64
 import ctypes
 import json
 import sys
+import urllib.parse
 import urllib.request
 
 ALG = b"ML-KEM-768"
@@ -55,7 +56,8 @@ def get_json(url, payload=None):
 def attest(base_url, subject, lib_path):
     """Run one full exchange. Returns the record the verifier stored."""
     lib = load(lib_path)
-    hs = get_json("%s/handshake?subject=%s" % (base_url.rstrip("/"), subject))
+    hs = get_json("%s/handshake?%s" % (base_url.rstrip("/"),
+                                       urllib.parse.urlencode({"subject": subject})))
     ciphertext = encapsulate(lib, base64.b64decode(hs["public_key"]))
     return get_json("%s/attest" % base_url.rstrip("/"), {
         "subject": subject,
