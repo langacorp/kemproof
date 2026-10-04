@@ -8,9 +8,13 @@ declare(strict_types=1);
  * read as a run that passed with it.
  *
  * The prover side is played here with OQS_KEM_encaps, declared by this test.
- * The fingerprint is then recomputed from the prover's own shared secret, so
- * the check is that both sides reached the same secret, not only that
- * attest() returned something.
+ * The prover computes its key confirmation from its own shared secret, and
+ * the fingerprint is recomputed from that same secret, so the check is that
+ * both sides reached the same secret, not only that attest() returned.
+ *
+ * Every acceptance check has its refusal next to it: a tampered or random
+ * ciphertext, a confirmation moved to another subject or session, a
+ * confirmation made with the wrong secret. Each must throw and store nothing.
  */
 require __DIR__ . '/../src/KemAttestation.php';
 
@@ -62,47 +66,69 @@ function check(string $label, bool $ok): void
 
 $store = new MemoryStore();
 $kem   = new KemProof\KemAttestation($lib, $store, 3600);
+$K     = KemProof\KemAttestation::class;
+
+/** attest() that reports the refusal instead of throwing it. */
+function refused(callable $f): ?string
+{
+    try { $f(); return null; } catch (RuntimeException $e) { return $e->getMessage(); }
+}
 
 $hs = $kem->handshake();
 check('handshake: public key is 1184 bytes', \strlen($hs['public_key']) === 1184);
 check('handshake: secret key is 2400 bytes', \strlen($hs['secret_key']) === 2400);
 check('handshake: session id is 32 hex chars', (bool) \preg_match('/^[0-9a-f]{32}$/', $hs['session_id']));
 check('handshake: two calls give two different keypairs', $kem->handshake()['public_key'] !== $hs['public_key']);
+check('handshake: the public key sits inside the secret key (FIPS 203)',
+    \substr($hs['secret_key'], 1152, 1184) === $hs['public_key']);
 
+$subject = 'host.example.com';
 [$ct, $proverSecret] = encapsulate($prover, $hs['public_key']);
-$record = $kem->attest('host.example.com', $hs['session_id'], $hs['secret_key'], $ct);
+$confirm = $K::confirmation($proverSecret, $hs['session_id'], $subject, $hs['public_key'], $ct);
+check('confirmation: 32 bytes', \strlen($confirm) === 32);
+
+$record = $kem->attest($subject, $hs['session_id'], $hs['secret_key'], $ct, $confirm);
 $expect = \hash_hmac('sha256', $proverSecret, $hs['session_id']);
 
 check('attest: fingerprint matches the prover\'s shared secret', \hash_equals($expect, $record['fingerprint']));
+check('attest: record says protocol kemproof/2, confirmed', $record['protocol'] === 'kemproof/2' && $record['confirmed'] === true);
 check('attest: record names ML-KEM-768 and FIPS 203', $record['algorithm'] === 'ML-KEM-768' && $record['standard'] === 'NIST FIPS 203');
 check('attest: expires ttl seconds after it was attested', $record['expires_at'] - $record['attested_at'] === 3600);
 check('attest: the shared secret is not in the record', \strpos(\serialize($record), $proverSecret) === false);
-check('store: the record was stored under the subject', $store->get('host.example.com') === $record);
+check('store: the record was stored under the subject', $store->get($subject) === $record);
 
-$status = $kem->status('host.example.com');
+$status = $kem->status($subject);
 check('status: valid while not expired', $status !== null && $status['valid'] === true);
 check('status: null for a subject never attested', $kem->status('never.example.com') === null);
 
-// The other direction for status: an expired record must say valid => false.
 $expired = new KemProof\KemAttestation($lib, $store, -1);
-$expired->attest('stale.example.com', $hs['session_id'], $hs['secret_key'], $ct);
+$expired->attest('stale.example.com', $hs['session_id'], $hs['secret_key'], $ct,
+    $K::confirmation($proverSecret, $hs['session_id'], 'stale.example.com', $hs['public_key'], $ct));
 $s = $kem->status('stale.example.com');
 check('status: expired record is present and valid => false', $s !== null && $s['valid'] === false);
 
-// The other direction for the fingerprint: a different session id, or a
-// ciphertext with one bit flipped, must not reproduce it.
-$other = $kem->attest('h2.example.com', \str_repeat('0', 32), $hs['secret_key'], $ct);
-check('fingerprint: a different session id gives a different one', $other['fingerprint'] !== $record['fingerprint']);
+// --- The direction that must fail. Each case: refused, and nothing stored.
+$before = $store->records;
 $flipped = $ct;
 $flipped[0] = \chr(\ord($flipped[0]) ^ 1);
-$tampered = $kem->attest('h3.example.com', $hs['session_id'], $hs['secret_key'], $flipped);
-check('fingerprint: a flipped ciphertext bit gives a different one', $tampered['fingerprint'] !== $record['fingerprint']);
+$cases = [
+    'a ciphertext with one bit flipped' => [$subject, $hs['session_id'], $flipped, $confirm],
+    'a random ciphertext (implicit rejection)' => [$subject, $hs['session_id'], \random_bytes(1088), $confirm],
+    'a confirmation moved to another subject' => ['other.example.com', $hs['session_id'], $ct, $confirm],
+    'a confirmation moved to another session' => [$subject, \str_repeat('0', 32), $ct, $confirm],
+    'a confirmation made with a wrong secret' => [$subject, $hs['session_id'], $ct,
+        $K::confirmation(\random_bytes(32), $hs['session_id'], $subject, $hs['public_key'], $ct)],
+    'a confirmation of zeros' => [$subject, $hs['session_id'], $ct, \str_repeat("\0", 32)],
+];
+foreach ($cases as $label => [$sub, $sid, $c, $conf]) {
+    $why = refused(fn () => $kem->attest($sub, $sid, $hs['secret_key'], $c, $conf));
+    check("refused: $label", $why !== null && \strpos($why, 'key confirmation failed') === 0);
+}
+// Another keypair's secret key: its public key differs, so the transcript does.
+$hs2 = $kem->handshake();
+$why = refused(fn () => $kem->attest($subject, $hs['session_id'], $hs2['secret_key'], $ct, $confirm));
+check('refused: the ciphertext presented to another keypair', $why !== null && \strpos($why, 'key confirmation failed') === 0);
+check('refused: nothing was stored by any refused attempt', $store->records === $before);
 
-// Measured, not a pass/fail: ML-KEM decapsulation uses implicit rejection.
-// A tampered or random ciphertext decapsulates "successfully" to a
-// pseudo-random secret, so attest() stores a record for it. See README.
-echo '  note: tampered ciphertext was attested too, valid => ',
-    \var_export($kem->status('h3.example.com')['valid'], true), " (implicit rejection)\n";
-
-echo $fail === 0 ? "\nexchange: a real ML-KEM-768 exchange completes and the fingerprint matches\n" : "\n$fail exchange check(s) failed\n";
+echo $fail === 0 ? "\nexchange: a real ML-KEM-768 exchange completes, the prover is confirmed, and every forgery is refused\n" : "\n$fail exchange check(s) failed\n";
 exit($fail === 0 ? 0 : 1);
