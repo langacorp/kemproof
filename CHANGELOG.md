@@ -9,6 +9,31 @@ was published. Work that is tagged but never released says so.
 - CHANGELOG: one entry per release, so a reader can tell which version brought
   what. The three releases of 2026-09-04 were a single dated entry; they are now
   three, and the tag with no release says so.
+- `StoreInterface` is in its own file, `src/StoreInterface.php`. composer.json
+  maps `KemProof\` to `src/` by PSR-4, and the interface lived inside
+  `KemAttestation.php`: with the package installed by Composer, implementing a
+  store before touching `KemAttestation` failed with "Interface not found".
+  Requiring `KemAttestation.php` by hand still works.
+- `attest()` refuses a secret key that is not 2400 bytes, as it already did
+  for a ciphertext that is not 1088. Before, a longer key was cut to 2400
+  bytes and attested without a word, and a shorter one failed inside FFI. A
+  caller passing a wrong-length key now gets a `RuntimeException` that names
+  the length. No change to how keys, ciphertexts or secrets are handled.
+- Client: the subject is URL-encoded in the handshake request. Before, a
+  subject with `&` or `#` reached the handshake cut short while the
+  attestation was posted for the full subject, and a space or a non-ASCII
+  character raised an exception.
+- README: a record does not show that the prover reached the same secret.
+  ML-KEM-768 uses implicit rejection, and a random 1088-byte ciphertext is
+  attested with `valid => true`; measured with liboqs. The line that said the
+  verifier reaches "the same shared secret" now says what is checked.
+- Tests: `tests/autoload.php`, `tests/lengths.php`, `tests/exchange.php` (a
+  real ML-KEM-768 exchange, with `KEMPROOF_LIBOQS`) and `tests/test_client.py`
+  (stdlib unittest, local HTTP server, no network). Each fails on the code it
+  was written against before the fix.
+- Self-test: builds liboqs 0.16.0 from its tag and runs a real exchange on
+  PHP 8.0, 8.2 and 8.4; validates composer.json; runs the client tests on
+  Python 3.8 and 3.13. actions/checkout@v5, actions/setup-python@v6.
 
 ## v1.1.3 — 2026-09-04
 
