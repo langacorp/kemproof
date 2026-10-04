@@ -30,13 +30,13 @@ jobs:
         # nobody runs is how a constraint drifts from the code.
         php: ["8.0", "8.2", "8.4"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: ffi
           tools: composer
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -83,8 +83,8 @@ jobs:
       matrix:
         python: ["3.8", "3.13"]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Client unit tests
