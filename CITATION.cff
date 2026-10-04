@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: If you use this software, please cite it as below.
 type: software
 title: "kemproof"
-abstract: "Attest that an ML-KEM-768 key exchange really happened, and record it with an expiry. It does not encrypt anything, and the README says so first. Built for AEGIS."
+abstract: "Attest that an ML-KEM-768 key exchange really happened: the prover shows, with a key confirmation, that it reached the same shared secret, and the exchange is recorded with an expiry. It does not encrypt anything, and the README says so first. Built for AEGIS."
 authors:
   - name: "LANGA Corp. Srl"
     city: Milan
@@ -11,7 +11,7 @@ authors:
 repository-code: "https://github.com/langacorp/kemproof"
 url: "https://github.com/langacorp/kemproof"
 license: MIT
-version: "1.2.0"
+version: "2.0.0"
 date-released: "2026-10-04"
 identifiers:
   - type: doi

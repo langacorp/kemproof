@@ -1,6 +1,6 @@
 {
     "name": "langacorp/kemproof",
-    "description": "Attest that an ML-KEM-768 key exchange really happened. Produces a signed record of the exchange - it does not protect a channel.",
+    "description": "Attest that an ML-KEM-768 key exchange really happened, with key confirmation, and record it with an expiry. It does not protect a channel.",
     "type": "library",
     "license": "MIT",
     "keywords": ["ml-kem", "kyber", "post-quantum", "attestation", "fips-203"],

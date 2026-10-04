@@ -58,6 +58,9 @@ jobs:
       - name: Wrong input lengths are refused
         run: php tests/lengths.php
 
+      - name: Key confirmation vectors
+        run: php tests/vector.php
+
       - name: Build liboqs ${{ env.LIBOQS_TAG }} (ML-KEM-768 only)
         run: |
           sudo apt-get install -y --no-install-recommends ninja-build
@@ -71,7 +74,7 @@ jobs:
       - name: Real ML-KEM-768 exchange, PHP verifier
         run: php tests/exchange.php
 
-      - name: Client unit tests, with the real exchange
+      - name: Client unit tests, with the real exchange and the end-to-end run
         run: python -m unittest discover -s tests -v
 
   client:
