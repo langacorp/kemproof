@@ -4,6 +4,42 @@ All notable changes to this project are recorded here.
 Each entry is a release. The heading carries the tag and the date the release
 was published. Work that is tagged but never released says so.
 
+## v2.0.0 — 2026-10-04
+
+Breaking: `attest()` takes a key confirmation, and a 1.x client is refused.
+
+- **Key confirmation.** Up to 1.2.0 a record did not show that the prover
+  reached the same shared secret: ML-KEM decapsulation uses implicit
+  rejection, and 1088 random bytes were attested with `valid => true`
+  (measured with liboqs 0.16.0). The prover now sends
+  HMAC-SHA256(shared secret, transcript), the transcript binding the session,
+  the subject, the public key and the ciphertext with length-prefixed fields.
+  The verifier compares in constant time and throws, storing nothing, on a
+  mismatch. Tests against real liboqs: a flipped bit, a random ciphertext, a
+  confirmation moved to another subject, session or keypair, one made with a
+  wrong secret and one of zeros are all refused; with the check disabled on
+  purpose the same tests fail.
+- Records carry `protocol => 'kemproof/2'` and `confirmed => true`.
+- The client sends the confirmation. Its `encapsulate()` returns
+  `(ciphertext, shared_secret)` and clears the liboqs buffer.
+- `examples/verifier.php`: a reference endpoint for the client. The secret
+  key stays on the server, a session is single-use (claimed by rename, so a
+  replay or a retry after a refusal gets 404), sessions expire after five
+  minutes, the subject must match the handshake. Errors map to 400, 403 or
+  500, and no stack trace reaches the prover.
+- Secret buffers are cleared: the FFI buffers for the secret key and the
+  shared secret, and the PHP copy of the shared secret (`sodium_memzero`
+  when available). Best effort: PHP may hold other copies.
+- Outside the CLI, PHP's default `ffi.enable=preload` made `FFI::cdef()` throw
+  an `FFI\Exception` that escaped as an uncaught error. It is now a
+  `RuntimeException` that says which setting to change.
+- `tests/vector.php` and the client tests pin the same confirmation bytes, so
+  the PHP and Python transcripts cannot drift apart unnoticed. An end-to-end
+  test runs the Python client against the reference verifier under `php -S`,
+  with real liboqs on both sides.
+- composer.json said "signed record". Nothing is signed: it is a record with
+  an HMAC fingerprint. The description now says what it is.
+
 ## v1.2.0 — 2026-10-04
 
 - CHANGELOG: one entry per release, so a reader can tell which version brought

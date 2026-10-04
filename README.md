@@ -15,9 +15,13 @@ with this algorithm, at this time, valid until then.
 
 ## What this proves
 
-- A party could complete an ML-KEM-768 encapsulation against a fresh public key
-- The verifier could decapsulate the ciphertext it received, with liboqs
-  reporting no error (see below for what that does not include)
+- A party completed an ML-KEM-768 encapsulation against a fresh public key
+- **Both sides reached the same shared secret.** The prover shows it with a key
+  confirmation, and the verifier refuses the exchange — and stores nothing —
+  when the confirmation does not match the secret it decapsulated
+- The exchange belongs to this subject and this session: the confirmation is
+  bound to both, and to the public key and the ciphertext, so it cannot be
+  moved to another subject or replayed against another keypair
 - It happened at a known time, and the record expires
 
 ## What this does **not** prove
@@ -30,15 +34,33 @@ Read this part twice. It is the reason the project exists.
   security is whatever it was before.
 - **It is not hybrid.** One KEM, not a KEM combined with a classical exchange.
 - **It says nothing about today's traffic.** It says an exchange was possible.
-- **A record does not show that the prover reached the same secret.** ML-KEM
-  decapsulation uses implicit rejection: a ciphertext that was never produced
-  against the public key decapsulates without error to an unrelated secret.
-  Measured with liboqs: 1088 random bytes are attested, and the record reads
-  `valid => true`. The verifier has no way to tell, because the prover's secret
-  never comes back to it. A record shows that a ciphertext of the right size
-  was received for a fresh keypair and decapsulated. If you need to know the
-  prover holds the same secret, the prover has to show it — for example by
-  sending a value derived from it — and that is not in this version.
+- **It does not say who the prover is.** Anyone who can reach your handshake
+  endpoint can run an exchange for the subject they name. Deciding who may
+  attest a subject is your endpoint's job; the reference verifier in
+  `examples/` does not do it.
+
+### Why version 2 exists
+
+Version 1 could not tell a real exchange from a forged one. ML-KEM
+decapsulation uses implicit rejection: a ciphertext that was never produced
+against the public key decapsulates without error to an unrelated secret.
+Measured with liboqs on 1.x: 1088 random bytes were attested, and the record
+read `valid => true`. The verifier had no way to tell, because the prover's
+secret never came back to it.
+
+Version 2 makes the prover show it. Next to the ciphertext it sends
+
+```
+confirmation = HMAC-SHA256(key = shared secret,
+                           "kemproof/2 key confirmation" | session id | subject
+                           | SHA-256(public key) | SHA-256(ciphertext))
+```
+
+with every field length-prefixed (4 bytes, big-endian). The verifier
+recomputes it from the secret it decapsulated and compares in constant time.
+A random ciphertext, a flipped bit, a confirmation made for another subject,
+session or keypair: each is refused, and each case is a test that runs against
+real liboqs in CI.
 
 If you need protected traffic, you need a protocol, not an attestation. If you
 need to show an auditor that post-quantum key exchange runs in your estate and
@@ -49,16 +71,20 @@ when it last ran, that is this.
 ```
 verifier                             prover
    |  handshake                         |
-   |----------- public key ------------>|
+   |----- session id, public key ------>|
    |                                    |  encapsulate (liboqs)
-   |<--------- ciphertext --------------|
+   |                                    |  confirmation = HMAC(secret, transcript)
+   |<--- ciphertext, confirmation ------|
    |  decapsulate                       |
+   |  check confirmation, or refuse     |
    |  fingerprint = HMAC(secret, sid)   |
-   |  store: alg, time, expiry          |
+   |  store: alg, protocol, time, expiry|
    |  discard the secret                |
 ```
 
-Three steps, and the secret survives none of them.
+Three steps, and the secret survives none of them. The secret key of the
+handshake stays on the verifier and is used once: delete it after `attest()`,
+whatever the outcome. `examples/verifier.php` shows one way to do that.
 
 ## Requirements
 
@@ -84,8 +110,11 @@ is not installed by Composer: it has to be present on the machine already.
 ```php
 $kem = new KemProof\KemAttestation('/path/to/liboqs.so', $yourStore);
 
-$hs = $kem->handshake();                  // hand out $hs['public_key']
-$record = $kem->attest($subject, $hs['session_id'], $hs['secret_key'], $ct);
+$hs = $kem->handshake();      // hand out session_id and public_key, keep secret_key
+// ... the prover returns $ct and $confirmation (32 raw bytes)
+$record = $kem->attest($subject, $hs['session_id'], $hs['secret_key'], $ct, $confirmation);
+// throws RuntimeException('key confirmation failed: ...') and stores nothing
+// when the prover did not reach the same secret
 $status = $kem->status($subject);         // null if never attested
 ```
 
@@ -99,15 +128,40 @@ Storage is yours. Implement `StoreInterface` over a table, a file, a cache.
 python3 client/attest.py https://example.org/kem/v1 my-subject /path/to/liboqs.so
 ```
 
+A reference endpoint for that client, with single-use sessions, a session
+lifetime and the subject checked against the handshake:
+
+```bash
+KEMPROOF_LIBOQS=/path/to/liboqs.so KEMPROOF_DATA=/var/lib/kemproof \
+  php -d ffi.enable=true -S 127.0.0.1:8080 examples/verifier.php
+```
+
+Outside the CLI, PHP's default `ffi.enable=preload` forbids loading liboqs at
+run time: set `ffi.enable=true` for the pool that runs the verifier, or
+preload the library. kemproof says so in its error instead of failing inside
+FFI.
+
+## Upgrading from 1.x
+
+- `attest()` takes a fifth argument, the 32-byte confirmation. A 1.x client
+  sends none and is refused: update the client and the verifier together.
+- Records carry `protocol => 'kemproof/2'` and `confirmed => true`. A 1.x
+  record has neither; it was never confirmed, and should be read that way.
+- The fingerprint is computed as before.
+
 ## Tests
 
 ```bash
 php tests/sizes.php      # constants match FIPS 203
 php tests/autoload.php   # every public name resolves through PSR-4
-php tests/lengths.php    # wrong key and ciphertext lengths are refused
+php tests/lengths.php    # wrong key, ciphertext and confirmation lengths are refused
+php tests/vector.php     # the confirmation is pinned, the same bytes as the client
 KEMPROOF_LIBOQS=/path/to/liboqs.so php tests/exchange.php
 KEMPROOF_LIBOQS=/path/to/liboqs.so python3 -m unittest discover -s tests -v
 ```
+
+The client tests include an end-to-end run: the Python client against
+`examples/verifier.php` under `php -S`, with real liboqs on both sides.
 
 Without `KEMPROOF_LIBOQS`, the real-exchange tests say they did not run; they
 do not pass in its place. The self-test builds liboqs from a pinned tag and
