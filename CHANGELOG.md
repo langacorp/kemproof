@@ -4,7 +4,7 @@ All notable changes to this project are recorded here.
 Each entry is a release. The heading carries the tag and the date the release
 was published. Work that is tagged but never released says so.
 
-## Unreleased
+## v1.2.0 — 2026-10-04
 
 - CHANGELOG: one entry per release, so a reader can tell which version brought
   what. The three releases of 2026-09-04 were a single dated entry; they are now
