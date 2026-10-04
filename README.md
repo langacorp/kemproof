@@ -16,7 +16,8 @@ with this algorithm, at this time, valid until then.
 ## What this proves
 
 - A party could complete an ML-KEM-768 encapsulation against a fresh public key
-- The verifier could decapsulate it and reach the same shared secret
+- The verifier could decapsulate the ciphertext it received, with liboqs
+  reporting no error (see below for what that does not include)
 - It happened at a known time, and the record expires
 
 ## What this does **not** prove
@@ -29,6 +30,15 @@ Read this part twice. It is the reason the project exists.
   security is whatever it was before.
 - **It is not hybrid.** One KEM, not a KEM combined with a classical exchange.
 - **It says nothing about today's traffic.** It says an exchange was possible.
+- **A record does not show that the prover reached the same secret.** ML-KEM
+  decapsulation uses implicit rejection: a ciphertext that was never produced
+  against the public key decapsulates without error to an unrelated secret.
+  Measured with liboqs: 1088 random bytes are attested, and the record reads
+  `valid => true`. The verifier has no way to tell, because the prover's secret
+  never comes back to it. A record shows that a ciphertext of the right size
+  was received for a fresh keypair and decapsulated. If you need to know the
+  prover holds the same secret, the prover has to show it — for example by
+  sending a value derived from it — and that is not in this version.
 
 If you need protected traffic, you need a protocol, not an attestation. If you
 need to show an auditor that post-quantum key exchange runs in your estate and
@@ -88,6 +98,20 @@ Storage is yours. Implement `StoreInterface` over a table, a file, a cache.
 ```bash
 python3 client/attest.py https://example.org/kem/v1 my-subject /path/to/liboqs.so
 ```
+
+## Tests
+
+```bash
+php tests/sizes.php      # constants match FIPS 203
+php tests/autoload.php   # every public name resolves through PSR-4
+php tests/lengths.php    # wrong key and ciphertext lengths are refused
+KEMPROOF_LIBOQS=/path/to/liboqs.so php tests/exchange.php
+KEMPROOF_LIBOQS=/path/to/liboqs.so python3 -m unittest discover -s tests -v
+```
+
+Without `KEMPROOF_LIBOQS`, the real-exchange tests say they did not run; they
+do not pass in its place. The self-test builds liboqs from a pinned tag and
+runs all of them.
 
 ## The other tools
 
